@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link href="../../js/bootstrap_3.3.0/css/bootstrap.min.css" type="text/css" rel="stylesheet" />
+<link href="../../js/bootstrap-datetimepicker-master/css/bootstrap-datetimepicker.min.css" type="text/css" rel="stylesheet" />
+
+<script type="text/javascript" src="../../js/jquery/jquery-1.11.1-min.js"></script>
+<script type="text/javascript" src="../../js/bootstrap_3.3.0/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="../../js/bootstrap-datetimepicker-master/js/bootstrap-datetimepicker.js"></script>
+<script type="text/javascript" src="../../js/bootstrap-datetimepicker-master/locale/bootstrap-datetimepicker.zh-CN.js"></script>
+
+
+<script type="text/javascript">
+
+	$(function () {
+		getForm();
+		$("#selectBtn").click(function () {
+			setHidden();
+			getForm();
+		});
+		$("#resetBtn").click(function () {
+			resetQuery();
+			getForm();
+		});
+		/**
+		 * 当点击添加用户按钮时将添加表单清空，填充省份表单，然后弹出添加模态框
+		 * 提交参数
+		 * name
+		 * password
+		 * realName
+		 * phone
+		 * email
+		 * cityId
+		 * address
+		 * hobbies
+		 */
+		$("#addBook").click(function () {
+			$("#add-name").val("");
+			$("#add-author").val("");
+			$("#add-publishing").val("");
+			$("#add-price").val("");
+			$("#add-number").val("");
+			$("#add-info").val("");
+			$("#addBookModal").modal("show");
+			$("#add-picture").hide();
+		});
+		/**
+		 * 信息填写完毕，点击提交进行表单验证，验证成功提交数据
+		 * name
+		 * author
+		 * publishing
+		 * price
+		 * number
+		 * info
+		 */
+		$("#add-submitBtn").click(function () {
+			if (true) {
+				$.ajax({
+					url: "/MyBookstore/book/save",
+					type: "post",
+					data: {
+						tbBookstoreBookPictureUrl: $("#add-pictureUrl").val(),
+						tbBookstoreBookName: $("#add-name").val(),
+						tbBookstoreBookAuthor: $("#add-author").val(),
+						tbBookstoreBookPublishing: $("#add-publishing").val(),
+						tbBookstoreBookPrice: $("#add-price").val(),
+						tbBookstoreBookNumber: $("#add-number").val(),
+						tbBookstoreBookInfo: $("#add-info").val()
+					},
+					success(data) {
+						if (data.flag) {
+							alert("书本添加成功");
+						} else {
+							alert("书本添加失败");
+						}
+						$("#addBookModal").modal("hide");
+						getForm();
+					}
+				});
+			} else {
+				alert("请重新修改信息");
+			}
+		});
+		/**
+		 * 当点击修改用户按钮时将获取用户信息进行回响，填充表单，然后弹出修改模态框
+		 * 提交参数
+		 * name
+		 * password
+		 * realName
+		 * phone
+		 * email
+		 * cityId
+		 * address
+		 * hobbies
+		 */
+		$("#editBook").click(function () {
+			if ($("input[name=check]:checked").length == 0) {
+				alert("请选择要修改的数据");
+			} else if ($("input[name=check]:checked").length != 1) {
+				alert("只能修改单条数据");
+			} else {
+				/*
+				* 通过id获取这条记录的详细信息，并将结果填充到
+				* */
+				$.ajax({
+					data: {
+						id: $("input[name=check]:checked").val()
+					},
+					url: "/MyBookstore/book/query/one",
+					type: "post",
+					/*
+					* 返回这条记录的详细信息
+					* data：user：user
+					* */
+					success(data) {
+						$("#edit-pictureUrl").val(data.data.tbBookstoreBookPictureUrl);
+						$("#edit-picture").show();
+						$("#edit-picture").prop("src", data.data.tbBookstoreBookPictureUrl);
+						$("#edit-name").val(data.data.tbBookstoreBookName);
+						$("#edit-author").val(data.data.tbBookstoreBookAuthor);
+						$("#edit-publishing").val(data.data.tbBookstoreBookPublishing);
+						$("#edit-price").val(data.data.tbBookstoreBookPrice);
+						$("#edit-number").val(data.data.tbBookstoreBookNumber);
+						$("#edit-info").val(data.data.tbBookstoreBookInfo);
+						$("#editUserModal").modal("show");
+					}
+
+				})
+
+			}
+
+
+		});
+		/**
+		 * 信息填写完毕，点击提交进行表单验证，验证成功提交数据
+		 */
+		$("#edit-submitBtn").click(function () {
+			if (true) {
+				$.ajax({
+					url: "/MyBookstore/book/update",
+					type: "post",
+					data: {
+						id: $("input[name=check]:checked").val(),
+						tbBookstoreBookPictureUrl: $("#edit-pictureUrl").val(),
+						tbBookstoreBookName: $("#edit-name").val(),
+						tbBookstoreBookAuthor: $("#edit-author").val(),
+						tbBookstoreBookPublishing: $("#edit-publishing").val(),
+						tbBookstoreBookPrice: $("#edit-price").val(),
+						tbBookstoreBookNumber: $("#edit-number").val(),
+						tbBookstoreBookInfo: $("#edit-info").val()
+					},
+					success(data) {
+						if (data.data) {
+							alert("书本信息修改成功");
+						} else {
+							alert("书本信息修改失败");
+						}
+						$("#editUserModal").modal("hide");
+						getFromByPage();
+					}
+				});
+			} else {
+				alert("请重新修改信息");
+			}
+		});
+
+		$("#deleteBook").click(function () {
+			var deleteList = "";
+			if ($("input[name=check]:checked").length == 0) {
+				alert("请选择删除的数据");
+				return;
+			} else {
+				for (var i = 0; i < $("input[name=check]:checked").length; i++) {
+					deleteList += $("input[name=check]:checked")[i].value
+					if (i < $("input[name=check]:checked").length - 1) {
+						deleteList += "&";
+					}
+				}
+			}
+			$.ajax({
+				data: {
+					deleteList: deleteList
+				},
+				url: "/MyBookstore/book/delete",
+				type: "post",
+				success() {
+					alert("删除成功");
+					getForm();
+					$("#selectAll").prop("checked", false);
+				}
+			});
+		});
+
+		/**
+		 * 全选
+		 * */
+		$("#selectAll").click(function () {
+			$("input[name=check]").prop("checked", this.checked);
+		});
+		$("#detailTbl").on("click", $("input[name=check]"), function () {
+			$("#selectAll").prop("checked", $("input[name=check]").length == $("input[name=check]:checked").length);
+		});
+		/**
+		 * 分页按钮
+		 * */
+		$("#page").on("click", ".entity", function () {
+			$("#currentPage").val($(this).val() + 1);
+			getFromByPage();
+		})
+		$("#page").on("click", "#previous", function () {
+			if ($("#currentPage").val() > 1) {
+				$("#currentPage").val($("#currentPage").val() - 1);
+			}
+			getFromByPage();
+		})
+		$("#page").on("click", "#next", function () {
+			if (parseInt($("#currentPage").val()) < parseInt($("#allPage").val())) {
+				$("#currentPage").val(parseInt($("#currentPage").val()) + 1);
+			}
+			getFromByPage();
+		})
+		$("#pageSizes").change(function (data) {
+			$("#currentPageSize").val(data.target.value);
+			$("#currentPage").val(1);
+			getFromByPage();
+		})
+
+		$("#userManagement").click(function () {
+			window.location.href = "user-management.html";
+		});
+		$("#bookManagement").click(function () {
+			window.location.href = "book-management.html";
+		})
+		$("#exit").click(function () {
+			$.ajax({
+				data: {},
+				url: "/MyBookstore/user/exit",
+				type: "post",
+				success(data) {
+					if (data.flag){
+						window.location.href = "../login.html";
+					}
+				}
+			});
+		})
+		/**
+		 * 上传图片到oss
+		 */
+		$("#add-files").change(function(){
+			$.ajax({
+				type: "get",
+				url: "/MyBookstore/oss/policy",
+				success(data) {
+					var formData = new FormData();
+					formData.append("OSSAccessKeyId",data.data.OSSAccessKeyId)
+					formData.append("expire",data.data.expire)
+					formData.append("key",data.data.key + "/" + $("#add-files")[0].files[0].name)
+					formData.append("policy",data.data.policy)
+					formData.append("signature",data.data.signature)
+					formData.append("file",$("#add-files")[0].files[0])
+					$.ajax({
+						data: formData,
+						type: "post",
+						url: data.data.host,
+						contentType:false,
+						processData:false,
+						success() {
+							alert("上传成功");
+							$("#add-picture").show();
+							$("#add-picture").prop("src", data.data.host + "/" + data.data.key + "/" + $("#add-files")[0].files[0].name);
+							$("#add-modalBody")[0].style.height = "500px";
+							$("#add-pictureUrl").val(data.data.host + "/" + data.data.key + "/" + $("#add-files")[0].files[0].name);
+						}
+					})
+
+				}
+			});
+		})
+		$("#edit-files").change(function(){
+			$.ajax({
+				type: "get",
+				url: "/MyBookstore/oss/policy",
+				success(data) {
+					var formData = new FormData();
+					var dir = data.data.key + "/" + $("#edit-files")[0].files[0].name;
+					var url = data.data.host + "/" + data.data.key + "/" + $("#edit-files")[0].files[0].name;
+					formData.append("OSSAccessKeyId",data.data.OSSAccessKeyId)
+					formData.append("expire",data.data.expire)
+					formData.append("key", dir);
+					formData.append("policy",data.data.policy)
+					formData.append("signature",data.data.signature)
+					formData.append("file",$("#edit-files")[0].files[0])
+					$.ajax({
+						data: formData,
+						type: "post",
+						url: data.data.host,
+						contentType:false,
+						processData:false,
+						success() {
+							alert("修改成功");
+							$("#edit-picture").show();
+							$("#edit-picture").prop("src", url);
+							$("#edit-pictureUrl").val(url);
+						}
+					})
+
+				}
+			});
+		})
+
+		function setHidden() {
+			$("#bookId").val($("#selectBookId").val())
+		}
+
+		function resetQuery() {
+			$("#bookId").val("");
+			$("#selectBookId").val("");
+		}
+
+		function getForm() {
+			$("#currentPage").val(1);
+			$("#currentPageSize option[value=10]").prop("selected", true);
+			ajaxGetForm();
+		}
+
+		function getFromByPage() {
+			ajaxGetForm();
+		}
+
+		function ajaxGetForm() {
+			$.ajax({
+				data: {
+					id: $("#bookId").val(),
+					pageNum: $("#currentPage").val(),
+					pageSize: $("#currentPageSize").val()
+				},
+				type: "post",
+				url: "/MyBookstore/book/query/all",
+				success(data) {
+					$("#detailTbl").empty();
+					$.each(data.data.list, function (i, n) {
+						$("#detailTbl").append("<tr class=\"active\">\n" +
+								"<td><input name='check' value='" + n.id + "' type=\"checkbox\" /></td>\n" +
+								"<td>" + n.id + "</td>\n" +
+								"<td><img id=\"picture\" src=" + n.tbBookstoreBookPictureUrl  + " style=\"width: 50px;height: 30px;\"></td>\n" +
+								"<td>" + n.tbBookstoreBookName + "</td>\n" +
+								"<td>" + n.tbBookstoreBookAuthor + "</td>\n" +
+								"<td>" + n.tbBookstoreBookPublishing + "</td>\n" +
+								"<td>" + n.tbBookstoreBookPrice + "</td>\n" +
+								"<td>" + n.tbBookstoreBookNumber + "</td>\n" +
+								"<td>" + n.tbBookstoreBookInfo + "</td>\n" +
+								"<td>" + n.tbBookstoreBookCreateTime + "</td>\n" +
+								"</tr>");
+					});
+					$("#page").empty();
+					$("#page").append("<li id='previous'>\n" +
+							"\t\t\t\t\t\t<a href=\"#\" aria-label=\"Previous\">\n" +
+							"\t\t\t\t\t\t\t<span aria-hidden=\"true\">&laquo;</span>\n" +
+							"\t\t\t\t\t\t</a>\n" +
+							"\t\t\t\t\t</li>");
+					for (var i = 0; i < data.data.count / $("#currentPageSize").val(); i++) {
+						$("#page").append(
+								"    <li class='entity' value=" + i + ">" +
+								"<a href=\"#\">" + (i + 1) + "</a></li>\n" +
+								"    <li>\n");
+						$("#allPage").val(i + 1);
+					}
+					displayPage();
+					$("#page").append("<li id='next'>\n" +
+							"\t\t\t\t\t\t<a href=\"#\" aria-label=\"Next\">\n" +
+							"\t\t\t\t\t\t\t<span aria-hidden=\"true\">&raquo;</span>\n" +
+							"\t\t\t\t\t\t</a>\n" +
+							"\t\t\t\t\t</li");
+				}
+			});
+		}
+
+		function displayPage() {
+			$("#displayPage").val("当前为第" + $("#currentPage").val() + "页，每页" +
+					$("#currentPageSize").val() + "条，共" +
+					$("#allPage").val() + "页");
+			$.each($("#page li"), function (i, n) {
+				n.classList.remove("active");
+			});
+			let index = $("#currentPage").val() - 1;
+			$(`#page li[value=${index}]`).addClass("active");
+		}
+
+	});
+</script>
+</head>
+<body>
+
+	<!-- 创建市场活动的模态窗口 -->
+	<div class="modal fade" id="addBookModal" role="dialog">
+		<div class="modal-dialog" role="document" style="width: 50%;">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span aria-hidden="true">×</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel1">添加图书</h4>
+				</div>
+				<div class="modal-body">
+					<div id="add-modalBody" style="height: 400px">
+						<div style="position: relative;top: 5%;left: 50%;margin-left: -150px">
+							<form class="form-horizontal" role="form" onsubmit="return false">
+								<div class="form-group">
+									<!--名称输入框-->
+									<div class="input-group" style="width: 350px">
+										<span class="input-group-addon" style="width: 50px">名称 </span>
+										<input type="text" id="add-name" class="form-control" placeholder="Name" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--图片-->
+									<div class="input-group" style="width: 350px;position: relative;top: 10px">
+										<span class="input-group-addon" style="width: 50px">图片 </span>
+										<input id="add-pictureUrl" type="hidden">
+										<img id="add-picture" style="width: 150px;height: 100px;display: none"><input id="add-files" type="file" value="选择图片">
+									</div>
+									<!--作者输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 20px">
+										<span class="input-group-addon"style="width: 50px"> 作者 </span>
+										<input type="text" id="add-author" class="form-control" placeholder="Author" aria-describedby="sizing-addon2" name="password">
+									</div>
+									<!--出版社输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 30px">
+										<span class="input-group-addon" style="width: 50px"> 出版社</span>
+										<input type="text" id="add-publishing" class="form-control" placeholder="Publishing" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--图书价格输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 40px">
+										<span class="input-group-addon" style="width: 50px">价格</span>
+										<input type="text" id="add-price" class="form-control" placeholder="Price" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--数量输入框-->
+									<div class="input-group" style="width: 350px; position: relative; top: 50px">
+										<span class="input-group-addon"style="width: 50px">数量</span>
+										<input type="text" id="add-number" class="form-control" placeholder="Number" aria-describedby="sizing-addon2" name="email">
+									</div>
+									<!--详情输入框-->
+									<div class="input-group" style="width: 350px; position: relative; top: 60px">
+										<span class="input-group-addon" style="width: 50px">详情</span>
+										<input type="text" id="add-info" class="form-control" placeholder="Info" aria-describedby="sizing-addon2">
+									</div>
+								</div>
+								<div class="form-group">
+									<button type="button" id="add-submitBtn" class="btn btn-primary btn-lg btn-block"  style="width: 350px; position: relative;top: 65px;">提交</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- 修改市场活动的模态窗口 -->
+	<div class="modal fade" id="editUserModal" role="dialog">
+		<div class="modal-dialog" role="document" style="width: 50%;">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span aria-hidden="true">×</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel2">创建用户</h4>
+				</div>
+				<div class="modal-body">
+					<div style="height: 500px">
+						<div style="position: relative;top: 5%;left: 50%;margin-left: -150px">
+							<form action="/register" class="form-horizontal" role="form" onsubmit="return false">
+								<div class="form-group">
+									<!--名称输入框-->
+									<div class="input-group" style="width: 350px">
+										<input type="hidden" id="edit-id">
+										<span class="input-group-addon" style="width: 50px">名称 </span>
+										<input type="text" id="edit-name" class="form-control" placeholder="Name" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--图片-->
+									<div class="input-group" style="width: 350px;position: relative;top: 10px">
+										<span class="input-group-addon" style="width: 50px">图片 </span>
+										<input id="edit-pictureUrl" type="hidden">
+										<img id="edit-picture" style="width: 150px;height: 100px;display: none"><input id="edit-files" type="file" value="选择图片">
+									</div>
+									<!--作者输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 20px">
+										<span class="input-group-addon"style="width: 50px"> 作者 </span>
+										<input type="text" id="edit-author" class="form-control" placeholder="Author" aria-describedby="sizing-addon2" name="password">
+									</div>
+									<!--出版社输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 30px">
+										<span class="input-group-addon" style="width: 50px"> 出版社</span>
+										<input type="text" id="edit-publishing" class="form-control" placeholder="Publishing" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--图书价格输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 40px">
+										<span class="input-group-addon" style="width: 50px">价格</span>
+										<input type="text" id="edit-price" class="form-control" placeholder="Price" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--数量输入框-->
+									<div class="input-group" style="width: 350px; position: relative; top: 50px">
+										<span class="input-group-addon"style="width: 50px">数量</span>
+										<input type="text" id="edit-number" class="form-control" placeholder="Number" aria-describedby="sizing-addon2" name="email">
+									</div>
+									<!--详情输入框-->
+									<div class="input-group" style="width: 350px;height: 50px; position: relative; top: 60px">
+										<span class="input-group-addon" style="width: 50px">详情</span>
+										<input type="text" id="edit-info" class="form-control" placeholder="Info" aria-describedby="sizing-addon2" style="height: 50px">
+									</div>
+								</div>
+								<div class="form-group">
+									<button type="button" id="edit-submitBtn" class="btn btn-primary btn-lg btn-block"  style="width: 350px; position: relative;top: 65px;">提交</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<ul class="nav nav-tabs" >
+		<li role="presentation" id="userManagement"><a href="#">用户管理</a></li>
+		<li role="presentation" class="active" id="bookManagement"><a href="#">图书管理</a></li>
+		<li role="presentation" id="exit"><a href="#">退出</a></li>
+	</ul>
+	
+	<div>
+		<div style="position: relative; left: 10px; top: -10px;">
+			<div class="page-header">
+				<h3>图书列表</h3>
+			</div>
+		</div>
+	</div>
+	<div style="position: relative; top: -20px; left: 0px; width: 100%; height: 100%;">
+		<div style="width: 100%; position: absolute;top: 5px; left: 10px;">
+			<div class="btn-toolbar" role="toolbar" style="height: 80px;">
+				<form class="form-inline" role="form" style="position: relative;top: 8%; left: 5px;">
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">图书id</div>
+				      <input id="bookId" type="hidden">
+				      <input id="selectBookId" class="form-control" type="text">
+				    </div>
+				  </div>
+				  	<button id="selectBtn" type="button" class="btn btn-default">查询</button>
+					<button id="resetBtn" type="button" class="btn btn-default">重置</button>
+				</form>
+			</div>
+			<div class="btn-toolbar" role="toolbar" style="background-color: #F7F7F7; height: 50px; position: relative;top: 5px;">
+				<div class="btn-group" style="position: relative; top: 18%;">
+				  <button type="button" id="addBook" class="btn btn-primary" data-toggle="modal"><span class="glyphicon glyphicon-plus"></span> 创建</button>
+				  <button type="button" id="editBook" class="btn btn-default"><span class="glyphicon glyphicon-pencil"></span> 修改</button>
+				  <button type="button" id="deleteBook" class="btn btn-danger"><span class="glyphicon glyphicon-minus"></span> 删除</button>
+				</div>
+				
+			</div>
+
+			<!--详情表格-->
+			<div style="position: relative;top: 10px;">
+				<table class="table table-hover">
+					<thead>
+						<tr style="color: #B3B3B3;">
+							<td><input id="selectAll" type="checkbox" /></td>
+							<td>id</td>
+							<td>缩略图</td>
+							<td>名称</td>
+							<td>作者</td>
+							<td>出版社</td>
+                            <td>单价</td>
+                            <td>数量</td>
+                            <td>简介</td>
+							<td>添加时间</td>
+						</tr>
+					</thead>
+					<tbody id="detailTbl">
+					</tbody>
+				</table>
+			</div>
+
+			<!--分页以后再做-->
+			<nav aria-label="Page navigation">
+				<div style="width: 300px">
+					<input type="hidden" id="currentPage" value="1">
+					<input type="hidden" id="currentPageSize" value="10">
+					<div style="width: 130px; position: relative; top: 80px">
+						每页
+						<select id="pageSizes" data-live-search="true" name="page" >
+							<option value="1">1</option>
+							<option value="3">3</option>
+							<option value="5">5</option>
+							<option value="10" selected="selected">10</option>
+						</select>条记录
+					</div>
+					<input type="text"class="form-group form-control" readonly="readonly" id="displayPage">
+
+				</div>
+				<input type="hidden" id="allPage">
+				<div style="position: relative;top: 100px">
+					<ul class="pagination" id="page">
+						<li>
+							<a href="#" aria-label="Previous">
+								<span aria-hidden="true">&laquo;</span>
+							</a>
+						</li>
+
+						<li>
+							<a href="#" aria-label="Next">
+								<span aria-hidden="true">&raquo;</span>
+							</a>
+						</li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		
+	</div>
+</body>
+</html>

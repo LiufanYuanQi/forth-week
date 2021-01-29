@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link href="../../js/bootstrap_3.3.0/css/bootstrap.min.css" type="text/css" rel="stylesheet" />
+<link href="../../js/bootstrap-datetimepicker-master/css/bootstrap-datetimepicker.min.css" type="text/css" rel="stylesheet" />
+
+<script type="text/javascript" src="../../js/jquery/jquery-1.11.1-min.js"></script>
+<script type="text/javascript" src="../../js/bootstrap_3.3.0/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="../../js/bootstrap-datetimepicker-master/js/bootstrap-datetimepicker.js"></script>
+<script type="text/javascript" src="../../js/bootstrap-datetimepicker-master/locale/bootstrap-datetimepicker.zh-CN.js"></script>
+
+
+<script type="text/javascript">
+
+	$(function () {
+		getForm();
+		$("#selectBtn").click(function () {
+			setHidden();
+			getForm();
+		});
+		$("#resetBtn").click(function () {
+			resetQuery();
+			getForm();
+		});
+		/**
+		 * 点击添加到购物车时，进行判断
+		 * 数量为空弹出提示，
+		 * 数量大于1，批量添加，
+		 * 提交参数
+		 * 书本的ids
+		 * ids：1&2&3
+		 *
+		 * 数量为1,弹出模态框，回响数据，填充表格，
+		 * 用户填写购买数量
+		 *
+		 */
+		$("#addToShoppingCart").click(function () {
+			if ($("input[name=check]:checked").length == 0) {
+				alert("请选择书本");
+			} else if ($("input[name=check]:checked").length != 1) {
+				var addList = "";
+				if ($("input[name=check]:checked").length == 0) {
+					return;
+				} else {
+					for (var i = 0; i < $("input[name=check]:checked").length; i++) {
+						addList += $("input[name=check]:checked")[i].value
+						if (i < $("input[name=check]:checked").length - 1) {
+							addList += "&";
+						}
+					}
+				}
+				$.ajax({
+					data: {
+						addList: addList
+					},
+					url: "/MyBookstore/cart/save/list",
+					type: "post",
+					success(data) {
+						/**
+						 * 后台添加商品进行验证，返回添加结果
+						 * */
+						var obj = $.parseJSON(data);
+						alert(obj.message);
+						getForm();
+						$("#selectAll").prop("checked", false);
+					}
+				});
+			} else {
+				/*
+				* 通过id获取这条记录的详细信息，并将结果填充到
+				* */
+				$.ajax({
+					data: {
+						id: $("input[name=check]:checked").val()
+					},
+					url: "/MyBookstore/book/query/one",
+					type: "post",
+					/*
+					* 返回这条记录的详细信息
+					* data：user：user
+					* */
+					success(data) {
+						let obj = $.parseJSON(data);
+						$("#add-name").val(obj.tbBookstoreBookName);
+						$("#add-picture").prop("src", obj.tbBookstoreBookPictureUrl);
+						$("#add-author").val(obj.tbBookstoreBookAuthor);
+						$("#add-publishing").val(obj.tbBookstoreBookPublishing);
+						$("#add-price").val(obj.tbBookstoreBookPrice);
+						$("#add-number").val(obj.tbBookstoreBookNumber);
+						$("#add-info").val(obj.tbBookstoreBookInfo);
+					}
+				})
+				$("#addBookModal").modal("show");
+			}
+
+
+		});
+		/**
+		 * 添加模态填写完毕，点击提交进行表单验证，验证成功提交数据
+		 * bookId：书本id
+		 * bookCount：购买总数
+		 *
+		 * 后端进行添加操作，首先进行验证，当前用户是否存在该id，
+		 */
+		$("#add-submitBtn").click(function () {
+			if (true) {
+				$.ajax({
+					url: "/MyBookstore/cart/save/one",
+					type: "post",
+					data: {
+						tbBookstoreShoppingCartBookId: $("input[name=check]:checked").val(),
+						tbBookstoreShoppingCartBookCount: $("#add-bookCount").val()
+					},
+					success(data) {
+						if ($.parseJSON(data)) {
+							alert("添加到购物车成功");
+						} else {
+							alert("商品已经在购物车中了");
+						}
+						$("#addBookModal").modal("hide");
+						getForm();
+					}
+				});
+			} else {
+				alert("请重新修改信息");
+			}
+		});
+
+
+		/**
+		 * 全选
+		 * */
+		$("#selectAll").click(function () {
+			$("input[name=check]").prop("checked", this.checked);
+		});
+		$("#detailTbl").on("click", $("input[name=check]"), function () {
+			$("#selectAll").prop("checked", $("input[name=check]").length == $("input[name=check]:checked").length);
+		});
+		/**
+		 * 分页按钮
+		 * */
+		$("#page").on("click", ".entity", function () {
+			$("#currentPage").val($(this).val() + 1);
+			getFromByPage();
+		})
+		$("#page").on("click", "#previous", function () {
+			if ($("#currentPage").val() > 1) {
+				$("#currentPage").val($("#currentPage").val() - 1);
+			}
+			getFromByPage();
+		})
+		$("#page").on("click", "#next", function () {
+			if (parseInt($("#currentPage").val()) < parseInt($("#allPage").val())) {
+				$("#currentPage").val(parseInt($("#currentPage").val()) + 1);
+			}
+			getFromByPage();
+		})
+		$("#pageSizes").change(function (data) {
+			$("#currentPageSize").val(data.target.value);
+			$("#currentPage").val(1);
+			getFromByPage();
+		});
+
+		$("#shoppingIndex").click(function () {
+			window.location.href = "book-shopping.html";
+		});
+		$("#bookShoppingCart").click(function () {
+			window.location.href = "book-shopping-cart.html";
+		})
+		$("#bookOrder").click(function () {
+			window.location.href = "my-order.html";
+		})
+		$("#exit").click(function () {
+			$.ajax({
+				data: {
+					type: "exit"
+				},
+				url: "/MyBookstore/user/exit",
+				type: "post",
+				success(data) {
+					if ($.parseJSON(data)){
+						window.location.href = "../login.html";
+					}
+				}
+			});
+		})
+
+		function setHidden() {
+			$("#bookId").val($("#selectBookId").val())
+		}
+
+		function resetQuery() {
+			$("#bookId").val("");
+			$("#selectBookId").val("");
+		}
+
+		function getForm() {
+			$("#currentPage").val(1);
+			$("#currentPageSize option[value=10]").prop("selected", true);
+			ajaxGetForm();
+		}
+
+		function getFromByPage() {
+			ajaxGetForm();
+		}
+
+		function ajaxGetForm() {
+			$.ajax({
+				data: {
+					id: $("#bookId").val(),
+					pageNum: $("#currentPage").val(),
+					pageSize: $("#currentPageSize").val()
+				},
+				type: "post",
+				url: "/MyBookstore/book/query/all",
+				success(data) {
+					$("#detailTbl").empty();
+					$.each($.parseJSON(data).data, function (i, n) {
+						$("#detailTbl").append("<tr class=\"active\">\n" +
+								"<td><input name='check' value='" + n.id + "' type=\"checkbox\" /></td>\n" +
+								"<td>" + n.id + "</td>\n" +
+								"<td><img id=\"picture\" src=" + n.tbBookstoreBookPictureUrl  + " style=\"width: 50px;height: 30px;\"></td>\n" +
+								"<td>" + n.tbBookstoreBookName + "</td>\n" +
+								"<td>" + n.tbBookstoreBookAuthor + "</td>\n" +
+								"<td>" + n.tbBookstoreBookPublishing + "</td>\n" +
+								"<td>" + n.tbBookstoreBookPrice + "</td>\n" +
+								"<td>" + n.tbBookstoreBookNumber + "</td>\n" +
+								"<td>" + n.tbBookstoreBookInfo + "</td>\n" +
+								"<td>" + n.tbBookstoreBookCreateTime + "</td>\n" +
+								"</tr>");
+					});
+					$("#page").empty();
+					$("#page").append("<li id='previous'>\n" +
+							"\t\t\t\t\t\t<a href=\"#\" aria-label=\"Previous\">\n" +
+							"\t\t\t\t\t\t\t<span aria-hidden=\"true\">&laquo;</span>\n" +
+							"\t\t\t\t\t\t</a>\n" +
+							"\t\t\t\t\t</li>");
+					for (var i = 0; i < $.parseJSON(data).count / $("#currentPageSize").val(); i++) {
+						$("#page").append(
+								"    <li class='entity' value=" + i + ">" +
+								"<a href=\"#\">" + (i + 1) + "</a></li>\n" +
+								"    <li>\n");
+						$("#allPage").val(i + 1);
+					}
+					displayPage();
+					$("#page").append("<li id='next'>\n" +
+							"\t\t\t\t\t\t<a href=\"#\" aria-label=\"Next\">\n" +
+							"\t\t\t\t\t\t\t<span aria-hidden=\"true\">&raquo;</span>\n" +
+							"\t\t\t\t\t\t</a>\n" +
+							"\t\t\t\t\t</li");
+				}
+			});
+		}
+
+		function displayPage() {
+			$("#displayPage").val("当前为第" + $("#currentPage").val() + "页，每页" +
+					$("#currentPageSize").val() + "条，共" +
+					$("#allPage").val() + "页");
+			$.each($("#page li"), function (i, n) {
+				n.classList.remove("active");
+			});
+			let index = $("#currentPage").val() - 1;
+			$(`#page li[value=${index}]`).addClass("active");
+		}
+
+	});
+</script>
+</head>
+<body>
+
+	<!-- 添加到购物车的模态窗口 -->
+	<div class="modal fade" id="addBookModal" role="dialog">
+		<div class="modal-dialog" role="document" style="width: 50%;">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span aria-hidden="true">×</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel1">添加图书</h4>
+				</div>
+				<div class="modal-body">
+					<div style="height: 550px">
+						<div style="position: relative;top: 5%;left: 50%;margin-left: -150px">
+							<form class="form-horizontal" role="form" onsubmit="return false">
+								<div class="form-group">
+									<!--名称输入框-->
+									<div class="input-group" style="width: 350px">
+										<span class="input-group-addon" style="width: 50px">名称 </span>
+										<input type="text" readonly="readonly" id="add-name" class="form-control" placeholder="Name" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--图片-->
+									<div class="input-group" style="width: 350px;position: relative;top: 10px">
+										<span class="input-group-addon" style="width: 50px">图片 </span>
+										<img id="add-picture" style="width: 150px;height: 100px;">
+									</div>
+									<!--作者输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 10px">
+										<span class="input-group-addon"style="width: 50px"> 作者 </span>
+										<input type="text" readonly="readonly" id="add-author" class="form-control" placeholder="Author" aria-describedby="sizing-addon2" name="password">
+									</div>
+									<!--出版社输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 20px">
+										<span class="input-group-addon" style="width: 50px"> 出版社</span>
+										<input type="text" readonly="readonly" id="add-publishing" class="form-control" placeholder="Publishing" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--图书价格输入框-->
+									<div class="input-group" style="width: 350px;position: relative;top: 30px">
+										<span class="input-group-addon" style="width: 50px">价格</span>
+										<input type="text" readonly="readonly" id="add-price" class="form-control" placeholder="Price" aria-describedby="sizing-addon2" name="username">
+									</div>
+									<!--数量输入框-->
+									<div class="input-group" style="width: 350px; position: relative; top: 40px">
+										<span class="input-group-addon"style="width: 50px">库存</span>
+										<input type="text" readonly="readonly" id="add-number" class="form-control" placeholder="Number" aria-describedby="sizing-addon2" name="email">
+									</div>
+									<!--详情输入框-->
+									<div class="input-group" style="width: 350px; position: relative; top: 50px">
+										<span class="input-group-addon" style="width: 50px">详情</span>
+										<input type="text" readonly="readonly" id="add-info" class="form-control" placeholder="Info" aria-describedby="sizing-addon2">
+									</div>
+									<!--购买数量输入框-->
+									<div class="input-group" style="width: 350px; position: relative; top: 60px">
+										<span class="input-group-addon" style="width: 50px">购买数量</span>
+										<input type="text" id="add-bookCount" class="form-control" placeholder="BookCount" aria-describedby="sizing-addon2">
+									</div>
+								</div>
+								<div class="form-group">
+									<button type="button" id="add-submitBtn" class="btn btn-primary btn-lg btn-block"  style="width: 350px; position: relative;top: 55px;">提交</button>
+								</div>
+							</form>
+						</div>
+					</div>
+
+
+
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<ul class="nav nav-tabs" >
+		<li role="presentation" class="active" id="shoppingIndex"><a href="#">首页</a></li>
+		<li role="presentation" id="bookShoppingCart"><a href="#">我的购物车</a></li>
+		<li role="presentation" id="bookOrder"><a href="#">我的订单</a></li>
+		<li role="presentation" id="exit"><a href="#">退出</a></li>
+	</ul>
+	
+	<div>
+		<div style="position: relative; left: 10px; top: -10px;">
+			<div class="page-header">
+				<h3>网上书城</h3>
+			</div>
+		</div>
+	</div>
+	<div style="position: relative; top: -20px; left: 0px; width: 100%; height: 100%;">
+		<div style="width: 100%; position: absolute;top: 5px; left: 10px;">
+			<div class="btn-toolbar" role="toolbar" style="height: 80px;">
+				<form class="form-inline" role="form" style="position: relative;top: 8%; left: 5px;">
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">图书id</div>
+				      <input id="bookId" type="hidden">
+				      <input id="selectBookId" class="form-control" type="text">
+				    </div>
+				  </div>
+				  	<button id="selectBtn" type="button" class="btn btn-default">查询</button>
+					<button id="resetBtn" type="button" class="btn btn-default">重置</button>
+				</form>
+			</div>
+			<div class="btn-toolbar" role="toolbar" style="background-color: #F7F7F7; height: 50px; position: relative;top: 5px;">
+				<div class="btn-group" style="position: relative; top: 18%;">
+				  <button type="button" id="addToShoppingCart" class="btn btn-primary" data-toggle="modal"><span class="glyphicon glyphicon-plus"></span> 添加到购物车</button>
+				</div>
+				
+			</div>
+
+			<!--详情表格-->
+			<div style="position: relative;top: 10px;">
+				<table class="table table-hover">
+					<thead>
+						<tr style="color: #B3B3B3;">
+							<td><input id="selectAll" type="checkbox" /></td>
+							<td>id</td>
+							<td>缩略图</td>
+							<td>名称</td>
+							<td>作者</td>
+							<td>出版社</td>
+                            <td>单价</td>
+                            <td>数量</td>
+                            <td>简介</td>
+                            <td>上架时间</td>
+						</tr>
+					</thead>
+					<tbody id="detailTbl">
+					</tbody>
+				</table>
+			</div>
+
+			<!--分页以后再做-->
+			<nav aria-label="Page navigation">
+				<div style="width: 300px">
+					<input type="hidden" id="currentPage" value="1">
+					<input type="hidden" id="currentPageSize" value="10">
+					<div style="width: 130px; position: relative; top: 80px">
+						每页
+						<select id="pageSizes" data-live-search="true" name="page" >
+							<option value="1">1</option>
+							<option value="3">3</option>
+							<option value="5">5</option>
+							<option value="10" selected="selected">10</option>
+						</select>条记录
+					</div>
+					<input type="text"class="form-group form-control" readonly="readonly" id="displayPage">
+
+				</div>
+				<input type="hidden" id="allPage">
+				<div style="position: relative;top: 100px">
+					<ul class="pagination" id="page">
+						<li>
+							<a href="#" aria-label="Previous">
+								<span aria-hidden="true">&laquo;</span>
+							</a>
+						</li>
+
+						<li>
+							<a href="#" aria-label="Next">
+								<span aria-hidden="true">&raquo;</span>
+							</a>
+						</li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		
+	</div>
+</body>
+</html>
